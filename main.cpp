@@ -8,6 +8,49 @@ using namespace std;
 char *trace_path = NULL;
 int cache_size = -1, block_size = -1, associativity = -1, replacement = -1;
 
+void arg_fetch(int argc, char *argv[]);
+
+class Cache;
+class Set;
+class Block;
+
+class Cache {
+public:
+	Cache();
+	~Cache();
+
+private:
+	Set *sets;
+};
+
+class Set {
+public:
+	Set();
+	~Set();
+
+private:
+	Block *blocks;
+};
+
+class Block {
+public:
+	Block();
+	bool getData(unsigned tag); 	// Check if this block contain the desire data.
+	void replace(unsigned tag); 	// Replace the original data to the new one. 
+
+private:
+//	char *data; 			// Needn't to store the data in this assignment.
+	bool valid;
+	unsigned tag;
+}
+
+
+int main(int argc, char *argv[]) {
+	arg_fetch(argc, argv);
+
+	return 0;
+}
+
 void print_usage(const char *prog_name) {
 	cout <<	"Usage: " << prog_name << " -t trace_file -s cache_size -l block_size -a associativity -r replacement\n"
 	     << "arguments:\n"
@@ -74,8 +117,9 @@ void arg_fetch(int argc, char *argv[]) {
 	}
 }
 
-int main(int argc, char *argv[]) {
-	arg_fetch(argc, argv);
+Block::Block(): valid(false) {
+}
 
-	return 0;
+bool Block::getData(unsigned tag) {
+	return valid && tag == this->tag;
 }
