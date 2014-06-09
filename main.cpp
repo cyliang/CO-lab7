@@ -7,51 +7,57 @@ using namespace std;
 #define FIFO 0
 #define LRU 1
 
+/* Arguments declare */
 char *trace_path;
 int cache_size = -1, block_size = -1, associativity = -1, replacement = -1;
 ifstream trace_file;
 
-void arg_fetch(int argc, char *argv[]);
+void arg_fetch(int argc, char *argv[]); // To fetch arguments.
 
+/* Forward declare */
 class Cache;
 class Set;
 class Block;
 
+/* Declare 'Cache', 'Set', and 'Block'.
+ * Cache contains sets, and set contains blocks. */
 class Cache {
 public:
-	Cache();
+	Cache(); 			// Create the cache. (Create the sets of this cache)
 	~Cache();
-	bool getData(unsigned addr);
+	bool getData(unsigned addr); 	// To check if the data of addr are cached. Cache if not.
 
 private:
-	Set *sets;
-	int setCount;
+	Set *sets; 			// The array of all sets.
+	int setCount; 			// The number of the sets in this cache.
 };
 
 class Set {
 public:
-	Set();
-	bool getData(unsigned tag);
+	Set(); 				// Create the set. (Create the blocks in this set)
+	bool getData(unsigned tag); 	// To check if the data of tag are in this set. Store if not.
 
 private:
-	list<Block> blocks;
+	list<Block> blocks; 		// Use list to store blocks to maintain the priority of replacement.
 };
 
 class Block {
 public:
-	Block();
+	Block(); 			// Create the block. (Initiallize valid bit to 0)
 	bool getData(unsigned tag); 	// Check if this block contain the desire data.
 	void replace(unsigned tag); 	// Replace the original data to the new one. 
 
 private:
 //	char *data; 			// Needn't to store the data in this assignment.
-	bool valid;
-	unsigned tag;
+	bool valid; 			// The valid bit.
+	unsigned tag; 			// The tag of this block.
 };
 
 
 int main(int argc, char *argv[]) {
+	/* Fetch the arguments */
 	arg_fetch(argc, argv);
+	/* Print the specification of this cache. */
 	cout << "Trace file: " << trace_path << '\n'
 	     << "Cache size: " << cache_size << '\n'
 	     << "Line size: " << block_size << '\n'
@@ -66,12 +72,13 @@ int main(int argc, char *argv[]) {
 	trace_file.setf(ios::hex, ios::basefield);
 	unsigned addr;
 	while(trace_file >> addr) {
-		if(cache.getData(addr))
+		if(cache.getData(addr)) // True for hit; false for miss.
 			hitCount++;
 		else
 			missCount++;
 	}
 
+	/* Print the summery */
 	cout << "Cache hits= " << hitCount << '\n'
 	     << "Cache miss= " << missCount << '\n'
 	     << "Miss rate: " << missCount * 100 / (missCount + hitCount) << '%' << endl;
@@ -79,6 +86,8 @@ int main(int argc, char *argv[]) {
 	return 0;
 }
 
+/* This function is called when there is any error in arguments fetching.
+ * It prints the usage of this program and terminates the execution. */
 void print_usage(const char *prog_name) {
 	cerr <<	"Usage: " << prog_name << " -t trace_file -s cache_size -l block_size -a associativity -r replacement\n"
 	     << "arguments:\n"
@@ -91,6 +100,7 @@ void print_usage(const char *prog_name) {
 	exit(2);
 }
 
+/* Fetch all the arguments and check if any is invalid. */
 void arg_fetch(int argc, char *argv[]) {
 	const char *prog_name = argv[0];
 	++argv, --argc;
@@ -151,35 +161,46 @@ void arg_fetch(int argc, char *argv[]) {
 	}
 }
 
+/* Initiallize blocks with valid bit 0. */
 Block::Block(): valid(false) {
 }
 
 bool Block::getData(unsigned tag) {
 	if(valid && tag == this->tag) {
+		/* Print hit information. */
 		cout << "hit\ntag: " << tag << "->" << tag << "\nvalid: 1->1\n";
 		return true;
 	}
 	return false;
 }
 
+/* This function is called only when miss. */
 void Block::replace(unsigned tag) {
+	/* Print miss information. */
 	cout << "miss\ntag: " << this->tag << "->" << tag << "\nvalid: " << valid << "->1\n";
 	valid = true;
 	this->tag = tag;
 }
 
 Set::Set() {
-	blocks.resize(associativity);
+	blocks.resize(associativity); 	// The number of blocks a set contains is 'associativity'
 }
 
+/* The blocks are maintained by list because only list can remove an element from the middle of it with low cost.
+ * The block with neweast data is moved to the tail of the list.
+ * The block of the front of the list is the next block to be replaced. */
 bool Set::getData(unsigned tag) {
 	for(list<Block>::iterator it = blocks.begin(); it != blocks.end(); ++it) {
 		if(it->getData(tag)) {
+			/* For LRU, if the block is hit, 
+			 * that block would be moved to the tail of the list. */
 			if(replacement == LRU) {
 				Block temp = *it;
 				blocks.erase(it);
 				blocks.push_back(temp);
 			}
+
+			/* For FIFO, nothing needs to do if a block is hit. */
 
 			return true;
 		}
