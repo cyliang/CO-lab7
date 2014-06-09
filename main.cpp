@@ -1,5 +1,6 @@
 #include <iostream>
 #include <cstdlib>
+#include <list>
 using namespace std;
 
 #define FIFO 0
@@ -18,18 +19,20 @@ class Cache {
 public:
 	Cache();
 	~Cache();
+	void getData(unsigned addr);
 
 private:
 	Set *sets;
+	int setCount;
 };
 
 class Set {
 public:
 	Set();
-	~Set();
+	void getData(unsigned tag);
 
 private:
-	Block *blocks;
+	list<Block> blocks;
 };
 
 class Block {
@@ -121,5 +124,55 @@ Block::Block(): valid(false) {
 }
 
 bool Block::getData(unsigned tag) {
-	return valid && tag == this->tag;
+	if(valid && tag == this->tag) {
+		cout << "hit\ntag: " << tag << "->" << tag << "\nvalid: 1->1\n";
+		return true;
+	}
+	return false;
+}
+
+void Block::replace(unsigned tag) {
+	cout << "miss\ntag: " << this->tag << "->" << tag << "\nvalid: " << valid << "->1\n";
+	valid = true;
+	this->tag = tag;
+}
+
+Set::Set() {
+	blocks.resize(associativity);
+}
+
+void Set::getData(unsigned tag) {
+	for(list<Block>::iterator it = blocks.begin(); it != blocks.end(); ++it) {
+		if(it->getData(tag)) {
+			if(replacement == LRU) {
+				Block temp = *it;
+				blocks.erase(it);
+				blocks.push_back(temp);
+			}
+
+			return;
+		}
+	}
+
+	Block temp = blocks.front();
+	blocks.pop_front();
+	temp.replace(tag);
+	blocks.push_back(temp);
+}
+
+Cache::Cache() {
+	setCount = cache_size / block_size / associativity;
+	sets = new Set[setCount];
+}
+
+Cache::~Cache() {
+	delete[] sets;
+}
+
+Cache::getData(unsigned addr) {
+	unsigned block_addr = addr / block_size;
+	unsigned index = block_addr % setCount;
+	unsigned tag = block_addr / setCount;
+
+	sets[index].getData(tag);
 }
