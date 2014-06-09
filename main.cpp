@@ -73,7 +73,8 @@ int main(int argc, char *argv[]) {
 	}
 
 	cout << "Cache hits= " << hitCount << '\n'
-	     << "Cache miss= " << missCount << endl;
+	     << "Cache miss= " << missCount << '\n'
+	     << "Miss rate: " << missCount * 100 / (missCount + hitCount) << '%' << endl;
 
 	return 0;
 }
