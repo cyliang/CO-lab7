@@ -124,7 +124,7 @@ void arg_fetch(int argc, char *argv[]) {
 				cerr << "Invalid cache size.\n";
 				print_usage(prog_name);
 			}
-			cache_size <<= 10;
+			cache_size <<= 10; 	// Convert from 'KByte' to 'Byte'
 			break;
 		case 'l':
 			block_size = atoi(argv[1]);
@@ -191,6 +191,8 @@ Set::Set() {
  * The block of the front of the list is the next block to be replaced. */
 bool Set::getData(unsigned tag) {
 	for(list<Block>::iterator it = blocks.begin(); it != blocks.end(); ++it) {
+		/* One of its blocks contains the data.
+		 *  -> The data is hit in this set. */
 		if(it->getData(tag)) {
 			/* For LRU, if the block is hit, 
 			 * that block would be moved to the tail of the list. */
@@ -206,6 +208,8 @@ bool Set::getData(unsigned tag) {
 		}
 	}
 
+	/* The data are not in this set,
+	 * so replace one of its blocks to store the new data. */
 	Block temp = blocks.front();
 	blocks.pop_front();
 	temp.replace(tag);
@@ -227,5 +231,6 @@ bool Cache::getData(unsigned addr) {
 	unsigned index = block_addr % setCount;
 	unsigned tag = block_addr / setCount;
 
+	/* To look for the data of that addr in the corresponding set. */
 	return sets[index].getData(tag);
 }
