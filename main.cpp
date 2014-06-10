@@ -1,57 +1,14 @@
 #include <iostream>
-#include <fstream>
 #include <cstdlib>
-#include <list>
+#include "header.h"
 using namespace std;
-
-#define FIFO 0
-#define LRU 1
 
 /* Arguments declare */
 char *trace_path;
 int cache_size = -1, block_size = -1, associativity = -1, replacement = -1;
-ifstream trace_file;
+std::ifstream trace_file;
 
 void arg_fetch(int argc, char *argv[]); // To fetch arguments.
-
-/* Forward declare */
-class Cache;
-class Set;
-class Block;
-
-/* Declare 'Cache', 'Set', and 'Block'.
- * Cache contains sets, and set contains blocks. */
-class Cache {
-public:
-	Cache(); 			// Create the cache. (Create the sets of this cache)
-	~Cache();
-	bool getData(unsigned addr); 	// To check if the data of addr are cached. Cache if not.
-
-private:
-	Set *sets; 			// The array of all sets.
-	int setCount; 			// The number of the sets in this cache.
-};
-
-class Set {
-public:
-	Set(); 				// Create the set. (Create the blocks in this set)
-	bool getData(unsigned tag); 	// To check if the data of tag are in this set. Store if not.
-
-private:
-	list<Block> blocks; 		// Use list to store blocks to maintain the priority of replacement.
-};
-
-class Block {
-public:
-	Block(); 			// Create the block. (Initiallize valid bit to 0)
-	bool getData(unsigned tag); 	// Check if this block contain the desire data.
-	void replace(unsigned tag); 	// Replace the original data to the new one. 
-
-private:
-//	char *data; 			// Needn't to store the data in this assignment.
-	bool valid; 			// The valid bit.
-	unsigned tag; 			// The tag of this block.
-};
 
 
 int main(int argc, char *argv[]) {
@@ -66,7 +23,7 @@ int main(int argc, char *argv[]) {
 	     << "Number of blocks= " << cache_size / block_size << '\n'
 	     << "Number of sets= " << cache_size / block_size / associativity << '\n';
 
-	Cache cache;
+	Cache cache(cache_size, block_size, associativity, replacement);
 	int hitCount = 0, missCount = 0;
 
 	trace_file.setf(ios::hex, ios::basefield);
@@ -161,76 +118,3 @@ void arg_fetch(int argc, char *argv[]) {
 	}
 }
 
-/* Initiallize blocks with valid bit 0. */
-Block::Block(): valid(false) {
-}
-
-bool Block::getData(unsigned tag) {
-	if(valid && tag == this->tag) {
-		/* Print hit information. */
-		cout << "hit\ntag: " << tag << "->" << tag << "\nvalid: 1->1\n";
-		return true;
-	}
-	return false;
-}
-
-/* This function is called only when miss. */
-void Block::replace(unsigned tag) {
-	/* Print miss information. */
-	cout << "miss\ntag: " << this->tag << "->" << tag << "\nvalid: " << valid << "->1\n";
-	valid = true;
-	this->tag = tag;
-}
-
-Set::Set() {
-	blocks.resize(associativity); 	// The number of blocks a set contains is 'associativity'
-}
-
-/* The blocks are maintained by list because only list can remove an element from the middle of it with low cost.
- * The block with neweast data is moved to the tail of the list.
- * The block of the front of the list is the next block to be replaced. */
-bool Set::getData(unsigned tag) {
-	for(list<Block>::iterator it = blocks.begin(); it != blocks.end(); ++it) {
-		/* One of its blocks contains the data.
-		 *  -> The data is hit in this set. */
-		if(it->getData(tag)) {
-			/* For LRU, if the block is hit, 
-			 * that block would be moved to the tail of the list. */
-			if(replacement == LRU) {
-				Block temp = *it;
-				blocks.erase(it);
-				blocks.push_back(temp);
-			}
-
-			/* For FIFO, nothing needs to do if a block is hit. */
-
-			return true;
-		}
-	}
-
-	/* The data are not in this set,
-	 * so replace one of its blocks to store the new data. */
-	Block temp = blocks.front();
-	blocks.pop_front();
-	temp.replace(tag);
-	blocks.push_back(temp);
-	return false;
-}
-
-Cache::Cache() {
-	setCount = cache_size / block_size / associativity;
-	sets = new Set[setCount];
-}
-
-Cache::~Cache() {
-	delete[] sets;
-}
-
-bool Cache::getData(unsigned addr) {
-	unsigned block_addr = addr / block_size;
-	unsigned index = block_addr % setCount;
-	unsigned tag = block_addr / setCount;
-
-	/* To look for the data of that addr in the corresponding set. */
-	return sets[index].getData(tag);
-}
